@@ -7,7 +7,8 @@ st.set_page_config(page_title="My Cloud Bot", page_icon="🤖")
 # 1. Setup the Cloud Brain (Groq)
 # Locally: It looks for a secret file. Online: It looks at Streamlit's settings.
 try:
-    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+    # CORRECT VERSION:
+client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 except Exception:
     st.error("Missing Groq API Key! Please add it to your secrets.")
     st.stop()
@@ -48,4 +49,5 @@ if prompt := st.chat_input("Ask me something..."):
         )
         response = chat_completion.choices[0].message.content
         st.markdown(response)
+
         st.session_state.messages.append({"role": "assistant", "content": response})
