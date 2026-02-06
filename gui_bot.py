@@ -39,13 +39,32 @@ if prompt := st.chat_input("Ask me something..."):
 
     with st.chat_message("assistant"):
         # Sends data + prompt to Groq
-        chat_completion = client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": f"You are a helpful assistant. Use this info: {knowledge}"},
-                {"role": "user", "content": prompt},
-            ],
-            model="llama3-8b-8192",
-        )
-        response = chat_completion.choices[0].message.content
-        st.markdown(response)
-        st.session_state.messages.append({"role": "assistant", "content": response})
+        # 4. The Chat Logic
+if prompt := st.chat_input("Ask me something..."):
+    # Add user message to history
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    with st.chat_message("assistant"):
+        try:
+            # Create a clean messages list for the API
+            api_messages = [
+                {"role": "system", "content": f"You are a helpful assistant. Knowledge: {knowledge}"}
+            ]
+            # Add previous chat history
+            for msg in st.session_state.messages:
+                api_messages.append({"role": msg["role"], "content": msg["content"]})
+
+            chat_completion = client.chat.completions.create(
+                messages=api_messages,
+                model="llama3-8b-8192",
+            )
+            
+            response = chat_completion.choices[0].message.content
+            st.markdown(response)
+            st.session_state.messages.append({"role": "assistant", "content": response})
+            
+        except Exception as e:
+            st.error(f"Groq API Error: {e}")
