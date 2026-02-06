@@ -44,7 +44,7 @@ if prompt := st.chat_input("Ask me something..."):
         try:
             # We create a fresh list to ensure no hidden "junk" data is sent
             response = client.chat.completions.create(
-                model="llama3-8b-8192",
+                model="llama-3.3-70b-versatile",
                 messages=[
                     {"role": "system", "content": f"Use this info: {knowledge}"},
                     {"role": "user", "content": prompt}
@@ -55,3 +55,4 @@ if prompt := st.chat_input("Ask me something..."):
             st.session_state.messages.append({"role": "assistant", "content": answer})
         except Exception as e:
             st.error(f"API Request Failed: {e}")
+
