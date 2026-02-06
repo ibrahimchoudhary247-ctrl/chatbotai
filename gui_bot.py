@@ -8,14 +8,18 @@ st.set_page_config(page_title="My Cloud Bot", page_icon="🤖")
 try:
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 except Exception as e:
-    st.error(f"Missing Groq API Key! Error: {e}")
+    st.error(f"Secret Key Error: {e}")
     st.stop()
 
-# 2. Load your data.txt
+# 2. Load and Clean Data
 def get_data():
     if os.path.exists("data.txt"):
-        with open("data.txt", "r", encoding="utf-8") as f:
-            return f.read()
+        try:
+            with open("data.txt", "r", encoding="utf-8") as f:
+                # We strip extra spaces to prevent formatting errors
+                return f.read().strip()
+        except:
+            return "Error reading data file."
     return "No custom data found."
 
 knowledge = get_data()
@@ -37,14 +41,17 @@ if prompt := st.chat_input("Ask me something..."):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        # Everything here is now properly indented by 8 spaces
-        chat_completion = client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": f"You are a helpful assistant. Use this info: {knowledge}"},
-                {"role": "user", "content": prompt},
-            ],
-            model="llama3-8b-8192",
-        )
-        response = chat_completion.choices[0].message.content
-        st.markdown(response)
-        st.session_state.messages.append({"role": "assistant", "content": response})
+        try:
+            # We create a fresh list to ensure no hidden "junk" data is sent
+            response = client.chat.completions.create(
+                model="llama3-8b-8192",
+                messages=[
+                    {"role": "system", "content": f"Use this info: {knowledge}"},
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            answer = response.choices[0].message.content
+            st.markdown(answer)
+            st.session_state.messages.append({"role": "assistant", "content": answer})
+        except Exception as e:
+            st.error(f"API Request Failed: {e}")
