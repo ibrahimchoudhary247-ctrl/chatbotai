@@ -5,12 +5,11 @@ import os
 st.set_page_config(page_title="My Cloud Bot", page_icon="🤖")
 
 # 1. Setup the Cloud Brain (Groq)
-# Locally: It looks for a secret file. Online: It looks at Streamlit's settings.
 try:
-    # CORRECT VERSION:
+    # Use the secret key from Streamlit Cloud Advanced Settings
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-except Exception:
-    st.error("Missing Groq API Key! Please add it to your secrets.")
+except Exception as e:
+    st.error(f"Missing or Invalid Groq API Key! Error: {e}")
     st.stop()
 
 # 2. Load your data.txt
@@ -24,7 +23,7 @@ knowledge = get_data()
 
 st.title("🤖 My Live Knowledge Bot")
 
-# 3. Chat History (Remembers what you said)
+# 3. Chat History
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -39,7 +38,7 @@ if prompt := st.chat_input("Ask me something..."):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        # This sends your data + your question to Groq
+        # Sends data + prompt to Groq
         chat_completion = client.chat.completions.create(
             messages=[
                 {"role": "system", "content": f"You are a helpful assistant. Use this info: {knowledge}"},
@@ -49,6 +48,4 @@ if prompt := st.chat_input("Ask me something..."):
         )
         response = chat_completion.choices[0].message.content
         st.markdown(response)
-
         st.session_state.messages.append({"role": "assistant", "content": response})
-
