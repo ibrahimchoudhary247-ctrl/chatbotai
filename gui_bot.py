@@ -6,7 +6,6 @@ from datetime import datetime
 # --- 1. PAGE CONFIG & CUSTOM THEME ---
 st.set_page_config(page_title="AI Knowledge Pro", page_icon="🤖", layout="centered")
 
-# Custom CSS for a professional "Night Owl" look
 st.markdown("""
     <style>
     .stApp { background-color: #0E1117; color: #E0E0E0; }
@@ -17,7 +16,6 @@ st.markdown("""
         border: 1px solid #30363D;
     }
     .stChatInputContainer { padding-bottom: 20px; }
-    /* Sidebar styling */
     section[data-testid="stSidebar"] { background-color: #161B22; border-right: 1px solid #30363D; }
     </style>
     """, unsafe_allow_html=True)
@@ -29,7 +27,7 @@ except Exception as e:
     st.error(f"Secret Key Error: {e}")
     st.stop()
 
-# --- 3. DATA LOADING ---
+# --- 3. DATA & LOGGING FUNCTIONS ---
 def get_data():
     if os.path.exists("data.txt"):
         try:
@@ -39,38 +37,45 @@ def get_data():
             return "Error reading data file."
     return "No custom data found."
 
+# NEW: Permanent History Function
+def save_to_permanent_log(user_input, bot_response):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_entry = f"Date: {timestamp}\nUser: {user_input}\nBot: {bot_response}\n{'-'*30}\n"
+    # This writes to a file that stays on the server during the session
+    with open("permanent_history.txt", "a", encoding="utf-8") as f:
+        f.write(log_entry)
+
+def read_permanent_log():
+    if os.path.exists("permanent_history.txt"):
+        with open("permanent_history.txt", "r", encoding="utf-8") as f:
+            return f.read()
+    return "No permanent history yet."
+
 knowledge = get_data()
 
 # --- 4. SIDEBAR & LOGGING ---
 with st.sidebar:
-    st.title("⚙️ Control Panel")
+    st.title("⚙️ Owner Control")
     st.markdown("---")
     
-    # Session Log (Visible only to you)
-    st.subheader("📝 Session Logs")
-    if "log" not in st.session_state:
-        st.session_state.log = []
+    st.subheader("📜 Permanent History")
+    # This button allows YOU to see everything ever asked
+    if st.checkbox("Show All-Time History"):
+        history = read_permanent_log()
+        st.text_area("History Log", history, height=300)
     
-    if st.session_state.log:
-        for entry in st.session_state.log:
-            st.caption(entry)
-    else:
-        st.write("No questions yet.")
-
     st.markdown("---")
-    if st.button("🗑️ Clear History"):
+    if st.button("🗑️ Clear Current View"):
         st.session_state.messages = []
-        st.session_state.log = []
         st.rerun()
 
 # --- 5. MAIN CHAT INTERFACE ---
 st.title("🤖 My Knowledge Bot")
-st.caption("Custom data loaded. I'm ready to help!")
+st.caption("Custom data loaded. History is being recorded permanently.")
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display Chat History
 for message in st.session_state.messages:
     avatar = "👤" if message["role"] == "user" else "🤖"
     with st.chat_message(message["role"], avatar=avatar):
@@ -78,17 +83,12 @@ for message in st.session_state.messages:
 
 # --- 6. CHAT LOGIC ---
 if prompt := st.chat_input("Ask me something..."):
-    # Log the time and question to the sidebar
-    timestamp = datetime.now().strftime("%H:%M:%S")
-    st.session_state.log.append(f"[{timestamp}] {prompt}")
-    
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user", avatar="👤"):
         st.markdown(prompt)
 
     with st.chat_message("assistant", avatar="🤖"):
         try:
-            # SWITCHED MODEL: llama-3.1-8b-instant is faster and has higher rate limits
             response = client.chat.completions.create(
                 model="llama-3.1-8b-instant", 
                 messages=[
@@ -99,5 +99,9 @@ if prompt := st.chat_input("Ask me something..."):
             answer = response.choices[0].message.content
             st.markdown(answer)
             st.session_state.messages.append({"role": "assistant", "content": answer})
+            
+            # SAVE TO PERMANENT FILE
+            save_to_permanent_log(prompt, answer)
+            
         except Exception as e:
             st.error(f"API Limit or Error: {e}")
