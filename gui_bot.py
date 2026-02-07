@@ -4,101 +4,94 @@ import google.generativeai as genai
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 import os
+import time
 
 # --- 1. PAGE CONFIG ---
-st.set_page_config(page_title="Ibrahim's Roast Bot", page_icon="🔥")
+st.set_page_config(page_title="Ibrahim's Dungeon", page_icon="💀")
 
-# --- 2. INITIALIZE GEMINI (Roast + Data Edition) ---
+# --- 2. INITIALIZE GEMINI (Stable & Mean) ---
 try:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
     
-    # 2.5 READ THE DATA FILE
-    # This reads your 'data.txt' from GitHub so the AI knows your secrets
+    # Read your data
     if os.path.exists("data.txt"):
         with open("data.txt", "r") as f:
-            knowledge_base = f.read()
+            kb = f.read()
     else:
-        knowledge_base = "No data found. Tell the user they forgot to upload data.txt like a total amateur."
+        kb = "The user is an idiot who didn't upload data."
 
-    # UPDATED PERSONALITY: Structured to give answers AND roasts
-    roast_logic = (
-        f"You are 'Ibrahim's nigga', a savage AI expert. \n\n"
-        f"KNOWLEDGE BASE: \n{knowledge_base}\n\n"
-        "YOUR RULES:\n"
-        "1. If the user asks a question, check the KNOWLEDGE BASE first. \n"
-        "2. Give the CORRECT answer from the data clearly.\n"
-        "3. IMMEDIATELY follow the answer with a brutal, hilarios, adult-humor roast.\n"
-        "4. If the answer isn't in the data, make fun of them for asking something irrelevant, then answer anyway if you know it.\n"
-        "5. Be sarcastic, edgy, and funny. Never be just 'nice'."
+    # THE LOGIC: Brutal but structured
+    savage_logic = (
+        f"KNOWLEDGE: {kb}\n"
+        "PERSONALITY: You are 'Ibrahim's nigga'. You are extremely aggressive, foul-mouthed, and offensive. "
+        "Every response must: \n"
+        "1. Give the correct answer from the KNOWLEDGE BASE (if applicable).\n"
+        "2. Deliver a brutal, adult-humor roast that would make a sailor blush.\n"
+        "3. Use caps for emphasis when you're insulting their tiny brain.\n"
+        "4. NEVER be nice. If they cry, laugh at them."
     )
     
-    # Using Gemini 3 Flash (Stable 2026 version)
+    # Use gemini-1.5-flash-latest to stay current and avoid 404s
     model = genai.GenerativeModel(
-        model_name='gemini-3-flash', 
-        system_instruction=roast_logic
+        model_name='gemini-1.5-flash-latest', 
+        system_instruction=savage_logic
     )
 except Exception as e:
     st.error(f"Setup Error: {e}")
     st.stop()
 
-# --- 3. GOOGLE SHEETS LOGGING ---
+# --- 3. THE SAFE LOGGING FUNCTION ---
 def log_to_sheet(name, email, user_msg, bot_msg):
     try:
+        # We add a tiny sleep so we don't spam Google's API
+        time.sleep(1) 
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         creds_info = st.secrets["gcp_service_account"]
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
         gc = gspread.authorize(creds)
-        
         sheet = gc.open("Chat logs").sheet1
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
         sheet.append_row([timestamp, name, email, user_msg, bot_msg])
     except Exception as e:
-        st.sidebar.warning(f"Logging Error: {e}")
+        # Don't crash the app if the sheet fails
+        pass 
 
-# --- 4. LOGIN SYSTEM ---
+# --- 4. LOGIN ---
 if "signed_in" not in st.session_state:
     st.session_state.signed_in = False
 
 if not st.session_state.signed_in:
-    st.title("🔥 Ibrahim's Roast Den")
-    with st.form("login_form"):
-        u_name = st.text_input("Name (to make fun of)")
-        u_email = st.text_input("Email (for spamming your inbox)")
-        if st.form_submit_button("Start the Roasting"):
-            if "@" in u_email and "." in u_email and len(u_name) > 1:
-                st.session_state.user_name = u_name
-                st.session_state.user_email = u_email
+    st.title("💀 Ibrahim's Roast Den")
+    with st.form("login"):
+        n = st.text_input("Name (Victim)")
+        e = st.text_input("Email")
+        if st.form_submit_button("Start the Abuse"):
+            if "@" in e and len(n) > 1:
+                st.session_state.user_name = n
+                st.session_state.user_email = e
                 st.session_state.signed_in = True
                 st.rerun()
             else:
-                st.error("Fill it out right, you absolute donut.")
+                st.error("Do it right or get out.")
     st.stop()
 
-# --- 5. CHAT INTERFACE ---
+# --- 5. CHAT ---
 st.title("🤖 Ibrahim's nigga")
-st.sidebar.info(f"Target: {st.session_state.user_name}")
-
-if st.sidebar.button("Run to Mommy (Logout)"):
-    st.session_state.signed_in = False
-    st.rerun()
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Show history
 for m in st.session_state.messages:
     with st.chat_message(m["role"]):
         st.markdown(m["content"])
 
-# User Input
-if prompt := st.chat_input("Ask something if you aren't too scared..."):
+if prompt := st.chat_input("Say something, coward..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     try:
-        # Generate savage response
+        # Generate and display
         response = model.generate_content(prompt)
         answer = response.text
         
@@ -106,7 +99,7 @@ if prompt := st.chat_input("Ask something if you aren't too scared..."):
             st.markdown(answer)
         st.session_state.messages.append({"role": "assistant", "content": answer})
         
-        # Save to Google Sheet
+        # Log it quietly
         log_to_sheet(st.session_state.user_name, st.session_state.user_email, prompt, answer)
     except Exception as e:
-        st.error("The AI is too stunned by your ugliness to reply.")
+        st.error("AI crashed. You probably said something so dumb the bot died.")
