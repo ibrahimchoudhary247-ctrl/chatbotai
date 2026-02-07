@@ -4,61 +4,60 @@ from google.oauth2.service_account import Credentials
 from groq import Groq
 from datetime import datetime
 
-# --- GOOGLE SHEETS LOGGING FUNCTION ---
+# --- 1. INITIALIZE GROQ SAFELY ---
+# This matches the name in your secrets box exactly
+try:
+    groq_key = st.secrets["GROQ_API_KEY"]
+    client = Groq(api_key=groq_key)
+except Exception as e:
+    st.error("Groq API Key Error. Check your Streamlit Secrets!")
+    st.stop()
+
+# --- 2. GOOGLE SHEETS LOGGING ---
 def log_to_sheet(user_msg, bot_msg):
     try:
-        # Define the scope for Sheets and Drive
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-        
-        # Pull the credentials directly from Streamlit Secrets
         creds_info = st.secrets["gcp_service_account"]
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
-        client = gspread.authorize(creds)
+        gc = gspread.authorize(creds)
         
-        # Open your spreadsheet (must match your sheet name exactly!)
-        sheet = client.open("Chat logs").sheet1
-        
-        # Create a timestamp
+        # Open your sheet
+        sheet = gc.open("Chat logs").sheet1
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
-        # Append the new row to the sheet
         sheet.append_row([timestamp, user_msg, bot_msg])
     except Exception as e:
-        # This will show in the sidebar if something goes wrong
-        st.sidebar.error(f"Logging Error: {e}")
+        # We use a warning so the bot keeps working even if logging fails
+        st.sidebar.warning(f"Note: Could not log to sheet. {e}")
 
-# --- INITIALIZE GROQ ---
-client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-
-# --- CHAT UI ---
-st.title("🤖 Chatbot with Permanent History")
+# --- 3. CHAT INTERFACE ---
+st.title("🤖 Chatbot with History")
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display chat history on the screen
 for m in st.session_state.messages:
     with st.chat_message(m["role"]):
         st.markdown(m["content"])
 
-# User Input
 if prompt := st.chat_input("Ask me a question..."):
-    # 1. Add user message to session
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # 2. Get AI Response
-    response = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=[{"role": "user", "content": prompt}]
-    )
-    answer = response.choices[0].message.content
-    
-    # 3. Add bot message to session
-    with st.chat_message("assistant"):
-        st.markdown(answer)
-    st.session_state.messages.append({"role": "assistant", "content": answer})
-    
-    # 4. SAVE TO GOOGLE SHEET PERMANENTLY
-    log_to_sheet(prompt, answer)
+    try:
+        # This is where your error was happening
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        answer = response.choices[0].message.content
+        
+        with st.chat_message("assistant"):
+            st.markdown(answer)
+        st.session_state.messages.append({"role": "assistant", "content": answer})
+        
+        # Try to log it
+        log_to_sheet(prompt, answer)
+        
+    except Exception as e:
+        st.error(f"AI Error: {e}")
