@@ -30,7 +30,7 @@ def log_to_sheet(user_msg, bot_msg):
         st.sidebar.warning(f"Note: Could not log to sheet. {e}")
 
 # --- 3. CHAT INTERFACE ---
-st.title("Hi There' I am IBRAHIM's NIGGA How Can I Be a Problem For u today😋")
+st.title("Hi There' I am IBRAHIM's NIGGA How Can I Be a Problem For u today😋?")
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -61,4 +61,5 @@ if prompt := st.chat_input("Ask me a question..."):
         
     except Exception as e:
         st.error(f"AI Error: {e}")
+
 
