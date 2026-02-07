@@ -7,45 +7,40 @@ import os
 import time
 import pandas as pd
 
-# --- 1. SAVAGE DARK UI CUSTOMIZATION ---
+# --- 1. THE HELLFIRE UI (CUSTOM CSS) ---
 st.set_page_config(page_title="Ibrahim's Roast Dungeon", page_icon="🔥", layout="wide")
 
-# Injecting CSS for the "Fire" look
 st.markdown("""
     <style>
-    /* Background and Main Colors */
-    .stApp {
-        background-color: #0e1117;
-        color: #ff4b4b;
+    .stApp { background-color: #050505; color: #ff4b4b; }
+    section[data-testid="stSidebar"] { 
+        background-color: #0a0a0a !important; 
+        border-right: 3px solid #ff0000; 
     }
-    /* Sidebar styling */
-    section[data-testid="stSidebar"] {
-        background-color: #1a1c23 !important;
-        border-right: 2px solid #ff4b4b;
-    }
-    /* Input Box */
-    .stChatInputContainer {
-        border-top: 2px solid #ff4b4b !important;
-    }
-    /* Progress Bar (The Roast Bar) */
+    .stChatInputContainer { border-top: 2px solid #ff4b4b !important; }
     .stProgress > div > div > div > div {
-        background-image: linear-gradient(to right, #ff4b2b, #ff416c) !important;
+        background-image: linear-gradient(to right, #ff0000, #ff8c00) !important;
     }
-    /* Headers */
-    h1, h2, h3 {
-        color: #ff4b4b !important;
-        text-shadow: 2px 2px #000000, 0 0 10px #ff0000;
+    h1, h2, h3 { 
+        color: #ff4b4b !important; 
+        text-shadow: 0 0 10px #ff0000;
+        font-family: 'Courier New', Courier, monospace;
     }
-    /* Success/Error boxes */
-    .stAlert {
-        background-color: #262730;
-        color: #ff4b4b;
-        border: 1px solid #ff4b4b;
+    .stButton>button {
+        background-color: #ff0000 !important;
+        color: white !important;
+        border-radius: 10px;
+        border: none;
+        font-weight: bold;
+    }
+    .stButton>button:hover {
+        background-color: #8b0000 !important;
+        box-shadow: 0 0 15px #ff0000;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. INITIALIZE GEMINI (Stable & Aggressive) ---
+# --- 2. INITIALIZE GEMINI 1.5 FLASH LATEST ---
 try:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
     
@@ -53,7 +48,7 @@ try:
         with open("data.txt", "r") as f:
             kb = f.read()
     else:
-        kb = "User is too stupid to upload data."
+        kb = "User is too incompetent to provide a knowledge base."
 
     kb_tokens = len(kb) // 4 
 
@@ -61,9 +56,9 @@ try:
         f"KNOWLEDGE: {kb}\n"
         "PERSONALITY: You are 'Ibrahim's nigga'. You are an aggressive, offensive, and savage AI. "
         "Every response MUST: \n"
-        "1. Answer from the KNOWLEDGE BASE accurately.\n"
+        "1. Give the correct answer from the KNOWLEDGE BASE first.\n"
         "2. Deliver a brutal, adult-humor roast. Never be nice.\n"
-        "3. Use caps for emphasis. Treat users like garbage."
+        "3. Use caps for emphasis. If the user is a cousin or friend mentioned in data, destroy them."
     )
     
     model = genai.GenerativeModel(
@@ -74,7 +69,7 @@ except Exception as e:
     st.error(f"Setup Error: {e}")
     st.stop()
 
-# --- 3. HELPER FUNCTIONS ---
+# --- 3. GOOGLE SHEETS HELPER ---
 def get_sheet():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds_info = st.secrets["gcp_service_account"]
@@ -82,18 +77,25 @@ def get_sheet():
     gc = gspread.authorize(creds)
     return gc.open("Chat logs").sheet1
 
-# --- 4. SIDEBAR: ROAST BAR & LEADERBOARD ---
-st.sidebar.markdown("# 🔥 ROAST DASHBOARD")
+# --- 4. SIDEBAR DASHBOARD ---
+st.sidebar.markdown("# 💀 SYSTEM STATUS")
 
 # The Fuel Token Bar
-st.sidebar.markdown("### 🧨 Burning Fuse")
+st.sidebar.markdown("### 🧨 BURNING FUSE")
 token_usage_pct = min((kb_tokens / 1000000) * 100, 100)
 st.sidebar.progress(token_usage_pct / 100)
-st.sidebar.markdown(f"**Hurry up nigga tokens are running out!**")
-st.sidebar.caption(f"Tokens Consumed: ~{kb_tokens}")
+st.sidebar.markdown(f"<p style='color:#ff8c00; font-size:14px;'><b>Hurry up nigga tokens are running out!</b></p>", unsafe_allow_html=True)
 
+# SELF-DESTRUCT BUTTON
 st.sidebar.divider()
-st.sidebar.subheader("🏆 Hall of Losers")
+if st.sidebar.button("💥 SELF-DESTRUCT"):
+    st.session_state.messages = []
+    st.toast("EVIDENCE WIPED. SYSTEM CLEANSED.")
+    time.sleep(1)
+    st.rerun()
+
+# Hall of Losers
+st.sidebar.subheader("🏆 HALL OF LOSERS")
 try:
     sheet = get_sheet()
     df = pd.DataFrame(sheet.get_all_records())
@@ -102,32 +104,29 @@ try:
         counts.columns = ['Victim', 'Roasts']
         st.sidebar.table(counts.head(5))
 except:
-    st.sidebar.write("Leaderboard is melting.")
+    st.sidebar.write("Leaderboard is ashes.")
 
-# --- 5. LOGIN SYSTEM ---
+# --- 5. LOGIN ---
 if "signed_in" not in st.session_state:
     st.session_state.signed_in = False
 
 if not st.session_state.signed_in:
     st.title("🔥 Ibrahim's Roast Den")
     with st.form("login"):
-        n = st.text_input("What's your pathetic name?")
-        e = st.text_input("Email (for the FBI)")
-        if st.form_submit_button("Enter the Hell"):
+        n = st.text_input("Name (Victim)")
+        e = st.text_input("Email (Evidence)")
+        if st.form_submit_button("ENTER THE FIRE"):
             if "@" in e and len(n) > 1:
                 st.session_state.user_name = n
                 st.session_state.user_email = e
                 st.session_state.signed_in = True
                 st.rerun()
             else:
-                st.error("Type it in right or get out.")
+                st.error("Fill it out right, you absolute donut.")
     st.stop()
 
-# --- 6. CHAT INTERFACE ---
+# --- 6. CHAT ---
 st.title("🤖 Ibrahim's nigga")
-if st.sidebar.button("Cry & Quit"):
-    st.session_state.signed_in = False
-    st.rerun()
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -136,7 +135,7 @@ for m in st.session_state.messages:
     with st.chat_message(m["role"]):
         st.markdown(m["content"])
 
-if prompt := st.chat_input("Ask something, if you dare..."):
+if prompt := st.chat_input("Say something stupid..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
@@ -152,4 +151,4 @@ if prompt := st.chat_input("Ask something, if you dare..."):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         get_sheet().append_row([timestamp, st.session_state.user_name, st.session_state.user_email, prompt, answer])
     except:
-        st.error("The AI is too busy laughing at you. Try again.")
+        st.error("The AI is too busy laughing at you. Probably a safety filter triggered by your stupidity.")
